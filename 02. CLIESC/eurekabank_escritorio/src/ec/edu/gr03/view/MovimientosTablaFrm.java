@@ -5,6 +5,7 @@
 package ec.edu.gr03.view;
 
 import ec.edu.gr03.controller.EurekaBankClient;
+import ec.edu.gr03.controller.EurekaBankController;
 import java.util.List;
 import javax.swing.table.DefaultTableModel;
 import ec.edu.gr03.model.Movimiento;
@@ -39,7 +40,7 @@ public class MovimientosTablaFrm extends javax.swing.JFrame {
             for (Movimiento mov : lista) {
                 modelo.addRow(new Object[]{
                     mov.getNromov(),
-                    mov.getFecha().toString(), // puedes formatear si quieres
+                    EurekaBankController.parseFechaDotNet(mov.getFecha()), // puedes formatear si quieres
                     mov.getTipo(),
                     mov.getAccion(),
                     mov.getImporte()
