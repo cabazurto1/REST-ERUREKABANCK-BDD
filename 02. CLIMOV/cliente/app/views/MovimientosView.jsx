@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   View,
@@ -12,8 +11,9 @@ import {
   Alert,
   useWindowDimensions
 } from 'react-native';
-import { traerMovimientos } from '../controllers/CuentaController';
 import { useNavigation } from '@react-navigation/native';
+import { traerMovimientos } from '../controllers/CuentaController';
+import { XMLParser } from 'fast-xml-parser';
 
 export default function MovimientosView() {
   const [cuenta, setCuenta] = useState('');
@@ -34,52 +34,45 @@ export default function MovimientosView() {
     return true;
   };
 
-  const parseFecha = (rawFecha) => {
-    try {
-      const match = /\/Date\((\d+)([-+]\d{4})?\)\//.exec(rawFecha);
-      if (match) {
-        const timestamp = parseInt(match[1]);
-        const date = new Date(timestamp);
-        return date.toLocaleString();
-      }
-      return rawFecha;
-    } catch {
-      return rawFecha;
-    }
-  };
-
   const handleConsulta = async () => {
     if (!validarCuenta()) return;
 
     try {
-      const data = await traerMovimientos(cuenta.trim());
+      const xmlResponse = await traerMovimientos(cuenta.trim());
+      const parser = new XMLParser({ ignoreAttributes: false });
+      const parsed = parser.parse(xmlResponse);
 
-      if (!Array.isArray(data) || data.length === 0) {
+      const movimientosRaw =
+        parsed['s:Envelope']?.['s:Body']?.['ObtenerPorCuentaResponse']?.['ObtenerPorCuentaResult']?.['a:Movimiento'];
+
+      if (!movimientosRaw) {
         setMovimientos([]);
         setSaldoTotal(null);
         Alert.alert('Sin movimientos', 'No se encontraron movimientos para esta cuenta');
         return;
       }
 
-      const parsed = data
+      const lista = Array.isArray(movimientosRaw) ? movimientosRaw : [movimientosRaw];
+
+      const parsedMovs = lista
         .map((mov) => ({
-          cuenta: mov.Cuenta,
-          fecha: parseFecha(mov.Fecha),
-          importe: parseFloat(mov.Importe),
-          tipo: mov.Tipo,
-          accion: mov.Accion,
-          nromov: mov.NroMov
+          cuenta: mov['a:Cuenta'],
+          fecha: mov['a:Fecha'].split('T')[0],
+          importe: parseFloat(mov['a:Importe']),
+          tipo: mov['a:Tipo'],
+          accion: mov['a:Accion'],
+          nromov: parseInt(mov['a:NroMov'])
         }))
         .sort((a, b) => b.nromov - a.nromov);
 
-      setMovimientos(parsed);
+      setMovimientos(parsedMovs);
 
-      const total = parsed.reduce((acc, mov) => {
+      const total = parsedMovs.reduce((acc, mov) => {
         return mov.accion === 'INGRESO' ? acc + mov.importe : acc - mov.importe;
       }, 0);
       setSaldoTotal(total);
     } catch (err) {
-      console.error(err);
+      console.error('Error al parsear:', err);
       setMovimientos([]);
       setSaldoTotal(null);
       Alert.alert('Error', 'No se pudo consultar los movimientos. Verifica tu conexión o el número de cuenta');
@@ -87,10 +80,7 @@ export default function MovimientosView() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Movimientos de Cuenta</Text>
 

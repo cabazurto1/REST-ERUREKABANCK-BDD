@@ -15,7 +15,7 @@ public class EurekaBankController {
 
     private WebTarget webTarget;
     private Client client;
-    private static final String BASE_URI = "http://10.40.16.190:8093/ec.edu.monster.controlador";
+    private static final String BASE_URI = "http://localhost:8093/ec.edu.monster.controlador";
 
     public EurekaBankController() {
         client = jakarta.ws.rs.client.ClientBuilder.newClient();
